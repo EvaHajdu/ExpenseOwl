@@ -37,7 +37,7 @@
             <form id="expenseForm" class="expense-form">
                 <div class="form-group">
                     <label for="name">Name</label>
-                    <input type="text" id="name" value="-" required>
+                    <input type="text" id="name" value="" required>
                 </div>
                 
                 <div class="form-group">
@@ -70,6 +70,10 @@
                 <div id="formMessage" class="form-message"></div>
             </form>
             <div id="formMessage" class="form-message"></div>
+        </div>
+
+        <div class="form-group">
+            <input type="text" id="filterInput" placeholder="Filter by name or category" oninput="updateTable()" />
         </div>
 
         <div id="tableContainer">
@@ -200,10 +204,10 @@
                 <table class="expense-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Amount</th>
-                            <th class="date-header">Date</th>
+                            <th onclick="sortTable(0)" class="${currentSort.column === 0 ? (currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}">Name</th>
+                            <th onclick="sortTable(1)" class="${currentSort.column === 1 ? (currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}">Category</th>
+                            <th onclick="sortTable(2)" class="${currentSort.column === 2 ? (currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}">Amount</th>
+                            <th onclick="sortTable(3)" class="date-header ${currentSort.column === 3 ? (currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}">Date</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -229,12 +233,6 @@
             `;
         }
 
-        function updateTable() {
-            const monthExpenses = getMonthExpenses(allExpenses);
-            const tableContainer = document.getElementById('tableContainer');
-            tableContainer.innerHTML = createTable(monthExpenses);
-        }
-
         function editExpense(id, name, category, amount, date) {
             document.getElementById('name').value = name;
             document.getElementById('category').value = category;
@@ -257,9 +255,10 @@
                 if (!configResponse.ok) throw new Error('Failed to fetch configuration');
                 const config = await configResponse.json();
                 const categorySelect = document.getElementById('category');
-                categorySelect.innerHTML = config.categories.map(cat => 
+                categorySelect.innerHTML = config.categories.map(cat =>
                     `<option value="${cat}">${cat}</option>`
                 ).join('');
+
                 currencySymbol = config.currency;
                 startDate = config.startDate;
                 const response = await fetch('/expenses');
@@ -307,6 +306,73 @@
         function closeDeleteModal() {
             expenseToDelete = null;
             document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        let currentSort = {
+            column: null,
+            direction: 'asc' // or 'desc'
+        };
+
+        function sortTable(columnIndex) {
+            // Columns: 0=Name, 1=Category, 2=Amount, 3=Date
+            if (currentSort.column === columnIndex) {
+                // Toggle direction
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = columnIndex;
+                currentSort.direction = 'asc';
+            }
+            updateTable();
+        }
+
+        function updateTable() {
+            const filterInput = document.getElementById('filterInput');
+            const filterValue = filterInput ? filterInput.value.trim().toLowerCase() : '';
+
+            let monthExpenses = getMonthExpenses(allExpenses);
+
+            // Filter by name or category
+            if (filterValue) {
+                monthExpenses = monthExpenses.filter(exp =>
+                    exp.name.toLowerCase().includes(filterValue) ||
+                    exp.category.toLowerCase().includes(filterValue)
+                );
+            }
+
+            // Sort if needed
+            if (currentSort.column !== null) {
+                monthExpenses.sort((a, b) => {
+                    let valA, valB;
+                    switch (currentSort.column) {
+                        case 0: // Name
+                            valA = a.name.toLowerCase();
+                            valB = b.name.toLowerCase();
+                            break;
+                        case 1: // Category
+                            valA = a.category.toLowerCase();
+                            valB = b.category.toLowerCase();
+                            break;
+                        case 2: // Amount
+                            valA = a.amount;
+                            valB = b.amount;
+                            break;
+                        case 3: // Date
+                            valA = new Date(a.date);
+                            valB = new Date(b.date);
+                            break;
+                        default:
+                            valA = '';
+                            valB = '';
+                    }
+
+                    if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            const tableContainer = document.getElementById('tableContainer');
+            tableContainer.innerHTML = createTable(monthExpenses);
         }
 
         async function confirmDelete() {

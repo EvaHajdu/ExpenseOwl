@@ -256,6 +256,7 @@ header {
 .expense-table th {
     background-color: var(--bg-primary);
     font-weight: 600;
+    cursor: pointer;
 }
 
 .expense-table tr:last-child td {
@@ -709,4 +710,16 @@ header {
 .form-message.error {
     background-color: rgba(239, 68, 68, 0.1);
     color: #EF4444;
+}
+
+th.sorted-asc::after {
+    content: " ▲";
+    font-size: 0.8em;
+    color: #333;
+}
+
+th.sorted-desc::after {
+    content: " ▼";
+    font-size: 0.8em;
+    color: #333;
 }
